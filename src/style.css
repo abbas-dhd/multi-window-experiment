@@ -1,0 +1,17 @@
+body {
+  position: relative;
+  background-color: #000;
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  /* height: 100%; */
+  /* width: 100%; */
+}
+
+.box {
+  transform-origin: center center;
+  /* transform: translate(-50%, -50%); */
+}
