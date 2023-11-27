@@ -5,57 +5,6 @@ import { WindowData, Dimensions } from './types';
 let windowData: WindowData[];
 let currentWindowId: string;
 
-declare global {
-  interface Window {
-    worldDimension: Dimensions;
-  }
-}
-window.worldDimension = {
-  height: 0,
-  width: 0,
-  x: 0,
-  y: 0,
-};
-
-addEventListener('storage', (e) => {
-  if (e.key === 'windowData') {
-    windowData =
-      (JSON.parse(localStorage.getItem('windowData') || '') as WindowData[]) ||
-      [];
-    updateGlobalWindowDimensions(windowData);
-    windowData.forEach((data, index) => {
-      renderBox(index, data);
-    });
-  }
-});
-
-window.addEventListener('unload', () => {
-  const currentWindowIndex = windowData.findIndex((data) => {
-    return data.id === currentWindowId;
-  });
-
-  windowData.splice(currentWindowIndex, 1);
-  localStorage.setItem('windowData', JSON.stringify(windowData));
-});
-
-window.onload = () => {
-  setTimeout(() => {
-    windowData = JSON.parse(
-      localStorage.getItem('windowData') || '[]'
-    ) as WindowData[];
-    const dimensions: Dimensions = getThisWindowDimensions();
-
-    currentWindowId = uuidv4();
-    windowData.push({ id: currentWindowId, dimensions });
-    updateGlobalWindowDimensions(windowData);
-    localStorage.setItem('windowData', JSON.stringify(windowData));
-
-    windowData.forEach((data, index) => {
-      renderBox(index, data);
-    });
-  }, 500);
-};
-
 function updateWindowDimensions() {
   const currentWindowIndex = windowData?.findIndex((data) => {
     return data.id === currentWindowId;
@@ -73,10 +22,9 @@ function updateWindowDimensions() {
     newDimensions.height !== oldDimensions.height
   ) {
     windowData[currentWindowIndex].dimensions = newDimensions;
-    updateGlobalWindowDimensions(windowData);
 
-    windowData.forEach((data, index) => {
-      updateRenderBox(index, data);
+    windowData.forEach((data) => {
+      updateRenderBox(data);
     });
 
     localStorage.setItem('windowData', JSON.stringify(windowData));
@@ -92,53 +40,22 @@ function getThisWindowDimensions() {
   };
 }
 
-function updateGlobalWindowDimensions(windowsData: WindowData[]) {
-  let left = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-  let top = Infinity;
-
-  // Loop through each box to find the extreme positions
-  windowsData.forEach((window) => {
-    const { x, y, width, height } = window.dimensions;
-    left = Math.min(left, x);
-    right = Math.max(right, x + width);
-    bottom = Math.max(bottom, y + height);
-    top = Math.min(top, y);
-  });
-
-  // Calculate the outer box dimensions
-  const outerBoxWidth = right - left;
-  const outerBoxHeight = bottom - top;
-
-  window.worldDimension.x = left;
-  window.worldDimension.y = top;
-  window.worldDimension.width = outerBoxWidth;
-  window.worldDimension.height = outerBoxHeight;
-}
-
-const render = () => {
-  updateWindowDimensions();
-  requestAnimationFrame(render);
-};
-
-render();
-
-function updateRenderBox(index = 0, _windowData: WindowData) {
+function updateRenderBox(_windowData: WindowData) {
   const element = document.getElementById(_windowData.id);
   if (!element) return;
 
-  element.style.left =
+  const targetPositionX =
     _windowData.dimensions.x -
     window.screenLeft +
-    _windowData.dimensions.width / 2 +
-    'px';
+    _windowData.dimensions.width / 2;
 
-  element.style.top =
+  const targetPositionY =
     _windowData.dimensions.y -
     window.screenTop +
-    _windowData.dimensions.height / 2 +
-    'px';
+    _windowData.dimensions.height / 2;
+
+  element.style.left = targetPositionX + 'px';
+  element.style.top = targetPositionY + 'px';
 }
 
 function renderBox(index = 0, _windowData: WindowData) {
@@ -155,24 +72,69 @@ function renderBox(index = 0, _windowData: WindowData) {
 
   const boxSideLength = 100 + index * 50;
   const rotation = index * 10;
-
-  newElement.style.left =
-    _windowData.dimensions.x -
-    window.screenLeft +
-    _windowData.dimensions.width / 2 +
-    'px';
-
-  newElement.style.top =
-    _windowData.dimensions.y -
-    window.screenTop +
-    _windowData.dimensions.height / 2 +
-    'px';
-
   newElement.style.height = `${boxSideLength}px`;
   newElement.style.width = `${boxSideLength}px`;
+
+  const targetPositionX =
+    _windowData.dimensions.x -
+    window.screenLeft +
+    _windowData.dimensions.width / 2;
+
+  const targetPositionY =
+    _windowData.dimensions.y -
+    window.screenTop +
+    _windowData.dimensions.height / 2;
+
+  newElement.style.left = targetPositionX + 'px';
+  newElement.style.top = targetPositionY + 'px';
 
   newElement.style.transform = `rotate(${rotation}deg`;
   newElement.classList.add('box');
 
   document.body.appendChild(newElement);
 }
+
+window.onload = () => {
+  setTimeout(() => {
+    windowData = JSON.parse(
+      localStorage.getItem('windowData') || '[]'
+    ) as WindowData[];
+    const dimensions: Dimensions = getThisWindowDimensions();
+
+    currentWindowId = uuidv4();
+    windowData.push({ id: currentWindowId, dimensions });
+    localStorage.setItem('windowData', JSON.stringify(windowData));
+
+    windowData.forEach((data, index) => {
+      renderBox(index, data);
+    });
+  }, 500);
+};
+
+addEventListener('storage', (e) => {
+  if (e.key === 'windowData') {
+    windowData =
+      (JSON.parse(
+        localStorage.getItem('windowData') || '[]'
+      ) as WindowData[]) || [];
+    windowData.forEach((data, index) => {
+      renderBox(index, data);
+    });
+  }
+});
+
+window.addEventListener('unload', () => {
+  const currentWindowIndex = windowData.findIndex((data) => {
+    return data.id === currentWindowId;
+  });
+
+  windowData.splice(currentWindowIndex, 1);
+  localStorage.setItem('windowData', JSON.stringify(windowData));
+});
+
+const render = () => {
+  updateWindowDimensions();
+  requestAnimationFrame(render);
+};
+
+render();

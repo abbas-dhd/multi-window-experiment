@@ -7,11 +7,8 @@ body {
   margin: 0;
   padding: 0;
   text-align: center;
-  /* height: 100%; */
-  /* width: 100%; */
 }
 
 .box {
   transform-origin: center center;
-  /* transform: translate(-50%, -50%); */
 }
