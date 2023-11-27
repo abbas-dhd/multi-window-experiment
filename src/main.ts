@@ -4,6 +4,17 @@ import { WindowData, Dimensions } from './types';
 
 let windowData: WindowData[];
 let currentWindowId: string;
+let initialized = false;
+
+const canvas: HTMLCanvasElement = document.getElementById(
+  'canvas'
+) as HTMLCanvasElement;
+const ctx = canvas!.getContext('2d');
+
+if (!ctx) throw new Error('No context');
+
+ctx.canvas.height = window.innerHeight;
+ctx.canvas.width = window.innerWidth;
 
 function updateWindowDimensions() {
   const currentWindowIndex = windowData?.findIndex((data) => {
@@ -23,9 +34,7 @@ function updateWindowDimensions() {
   ) {
     windowData[currentWindowIndex].dimensions = newDimensions;
 
-    windowData.forEach((data) => {
-      updateRenderBox(data);
-    });
+    drawAllBoxes(windowData);
 
     localStorage.setItem('windowData', JSON.stringify(windowData));
   }
@@ -40,61 +49,49 @@ function getThisWindowDimensions() {
   };
 }
 
-function updateRenderBox(_windowData: WindowData) {
-  const element = document.getElementById(_windowData.id);
-  if (!element) return;
-
-  const targetPositionX =
-    _windowData.dimensions.x -
-    window.screenLeft +
-    _windowData.dimensions.width / 2;
-
-  const targetPositionY =
-    _windowData.dimensions.y -
-    window.screenTop +
-    _windowData.dimensions.height / 2;
-
-  element.style.left = targetPositionX + 'px';
-  element.style.top = targetPositionY + 'px';
+function drawAllBoxes(_windowData: WindowData[]) {
+  if (!ctx) return;
+  // clear canvas before drawing boxes
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  _windowData.forEach((data, index) => {
+    drawBox(data, index);
+  });
 }
 
-function renderBox(index = 0, _windowData: WindowData) {
-  const element = document.getElementById(_windowData.id)?.remove();
+function drawBox(_windowData: WindowData, index = 0) {
+  if (!ctx) return;
 
-  if (element) return;
-
-  const newElement = document.createElement('div');
-  newElement.id = _windowData.id;
-  newElement.style.borderWidth = '2px';
-  newElement.style.borderStyle = 'solid';
-  newElement.style.borderColor = `hsl(${index * 50}, 100%, 50%)`;
-  newElement.style.position = 'absolute';
+  ctx.save();
 
   const boxSideLength = 100 + index * 50;
-  const rotation = index * 10;
-  newElement.style.height = `${boxSideLength}px`;
-  newElement.style.width = `${boxSideLength}px`;
-
-  const targetPositionX =
+  const rotateAngle = index * 10; // degrees
+  const targetX =
     _windowData.dimensions.x -
     window.screenLeft +
     _windowData.dimensions.width / 2;
 
-  const targetPositionY =
+  const targetY =
     _windowData.dimensions.y -
     window.screenTop +
     _windowData.dimensions.height / 2;
 
-  newElement.style.left = targetPositionX + 'px';
-  newElement.style.top = targetPositionY + 'px';
+  ctx.strokeStyle = `hsl(${index * 50}, 100%, 50%)`;
+  ctx.lineWidth = 2;
 
-  newElement.style.transform = `rotate(${rotation}deg`;
-  newElement.classList.add('box');
+  ctx.translate(targetX + boxSideLength / 2, targetY + boxSideLength / 2);
+  ctx.rotate((rotateAngle * Math.PI) / 180);
+  ctx.strokeRect(
+    -boxSideLength / 2,
+    -boxSideLength / 2,
+    boxSideLength,
+    boxSideLength
+  );
 
-  document.body.appendChild(newElement);
+  ctx.restore();
 }
 
-window.onload = () => {
+function init() {
+  initialized = true;
   setTimeout(() => {
     windowData = JSON.parse(
       localStorage.getItem('windowData') || '[]'
@@ -105,10 +102,24 @@ window.onload = () => {
     windowData.push({ id: currentWindowId, dimensions });
     localStorage.setItem('windowData', JSON.stringify(windowData));
 
-    windowData.forEach((data, index) => {
-      renderBox(index, data);
-    });
+    drawAllBoxes(windowData);
   }, 500);
+}
+
+window.onload = () => {
+  if (document.visibilityState === 'hidden') return;
+  init();
+};
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState != 'hidden' && !initialized) {
+    init();
+  }
+});
+
+window.onresize = () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 };
 
 addEventListener('storage', (e) => {
@@ -117,9 +128,8 @@ addEventListener('storage', (e) => {
       (JSON.parse(
         localStorage.getItem('windowData') || '[]'
       ) as WindowData[]) || [];
-    windowData.forEach((data, index) => {
-      renderBox(index, data);
-    });
+
+    drawAllBoxes(windowData);
   }
 });
 
